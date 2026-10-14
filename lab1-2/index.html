@@ -1,0 +1,77 @@
+<!--Ruweyda Abdi
+    Geog 458
+    10-12-2026-->
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+    <!-- UTF-8 makes sure all the text gets displayed properly.-->
+    <meta charset='utf-8' />
+    <!--The title text is shown on the tab of the browser-->
+    <title>my First Map</title>
+    <!--This code makes the webpage scale to the device's width and length-->
+    <meta name='viewport' content='width=device-width, initial-scale=1' />
+    <!--Loads the Mapbox stylesheet, which styles the map, buttons, popups, and markers etc-->
+    <link href="https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.css" rel="stylesheet">
+    <!--Loads the Mapbox GL JS library, which defines the mapboxgl object the script below uses to draw the map-->
+    <script src="https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.js"></script>
+    <style>
+        /*Removes the edges*/
+        body { margin: 0; padding: 0; }
+        /*Makes sure the map is displayed with proper size*/
+        #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+   </style>
+</head>
+<body>
+   <!--Makes sure there is a placeholder for the map. -->
+   <div id='map'></div>
+   <!--How the page becomes a map; the head loads the Mapbox CSS and JS, the div above reserves the space, 
+   and this script creates the map inside that div-->
+   <script>
+    // Public token access that is linked to my account, and authenticates map requests.
+      mapboxgl.accessToken = 'pk.eyJ1IjoicnV3ZXlkYXRycGUiLCJhIjoiY212N21mcTl5MDRiczJ6cTNrandueGJkZyJ9.2g8qZ9ukpRsIYKFnK2DltQ';
+      //Creates a new map object within the variable mymap and calls up the div ; ID 'map'
+      const mymap = new mapboxgl.Map({
+            // The container is what holds the HTML ID that holds the map
+             container: 'map',
+             //style and projection are commented out as we don't need them.
+             //style: 'mapbox://styles/mapbox/light-v11',
+             //projection: 'globe', //Display the map as a globe since satellite-v9 defaults to Mercator
+             // The center holds the map view based on long, Lat.
+             center: [-122.411263, 47.579098], 
+             //The zoom level is taking the center, and the higher the interger the closer our view is.
+             zoom:16.43
+          });
+
+// addcontrol takes the UI element and adds it to the fullscreencontrol for a button that toggles between
+//  fullscreen sizing.
+mymap.addControl(new mapboxgl.FullscreenControl());
+// Navigationcontrol adds a plus and minus button for zoom, and a compas for the rotation of our map.
+mymap.addControl(new mapboxgl.NavigationControl());
+
+//Runs the function  inside the map style and configures changes after it loads.
+mymap.on('style.load', () => {
+  //setConfigProperty(importId, property, value): ‘basemap’ is the Standard style’s import name, 
+  //then the setting to change, then its new value
+  // LightPreset set to dusk so the lighting gives us a darker sunset look.
+  mymap.setConfigProperty('basemap', 'lightPreset', 'dusk');
+  // ShowPointOfInterestLabels hides the text icons for ie. building names.
+  mymap.setConfigProperty('basemap', 'showPointOfInterestLabels', false);
+  // showRoadLabels set to false hides the street names and road names.
+  mymap.setConfigProperty('basemap', 'showRoadLabels', false);
+  //Show3dObjects flattens 3D buildings and other landmarks as well as removing their shadows. 
+  mymap.setConfigProperty('basemap', 'show3dObjects', false);
+});
+</script>
+</body>
+
+<!--
+Neighborhood: Alki Beach, West Seattle. I like hanging out here until closing for the bonfires. 
+Property 1: showRoadLabels set to false What I changed: I hid all street names and road shields. 
+Effect: The roads show up as plain shapes, so the map has way less text and the water and beach stand out. 
+When it's useful: Maps about the look of a place instead of directions, or maps where I'd add my own labels 
+or data and don't want street names competing. Property 2: show3dObjects set to false What I changed: I turned 
+off the 3D buildings, landmarks, and trees, including their shadows. Effect: Buildings become flat shapes, so with 
+dusk lighting the map looks simple and calm. When it's useful: Flat top-down maps, slower devices that struggle with 
+3D, or when tall buildings would block data on top of the map.
+-->
+</html>
