@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>My First Map</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!--Mapbox GL JS stylesheet and script-->
+    <link href="https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.css" rel="stylesheet">
+    <script src="https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.js"></script>
+    <style>
+        body { margin: 0; padding: 0; }
+        /*The map opens for the whole screen*/
+        #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+        /*Title box centered at the top of the map*/
+        #title {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #fff;
+            padding: 8px 16px;
+            border-radius: 3px;
+            font-size: 20px;
+            font-weight: bold;
+        }
+        /*Legend panel in the bottom right corner*/
+        #legend {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 110px;
+            background: #fff;
+            margin-right: 20px;
+            margin-bottom: 40px;
+            padding: 10px 20px 10px 10px;
+            border-radius: 3px;
+            text-align: center;
+        }
+        /* Each row in the legend */ 
+        .break {
+            position: relative;
+            margin: 0;
+            padding: 0;
+        }
+        /* The round color sample */
+        .dot {
+            display: inline-block;
+            margin-top: 5px;
+            border-radius: 50%;
+            opacity: 0.6;
+        }
+        /* the population number next to each sample */
+        .dot-label {
+            position: absolute;
+            top: 0;
+            right: 0;
+            font-style: italic;
+        }
+        #legend a {
+            color: black;
+        }
+    </style>
+</head>
+<body>
+    <!-- Placeholder for the map-->
+    <div id="map"></div>
+    <!-- Placeholder for the legend-->
+    <div id="legend"></div>
+    <!--Map title-->
+    <div id = "title">World cities and towns by population </div>
+    <script>
+        // Data: World cities: the natural earth, loaded from canvas
+        // Context: all cities and towns are shown with 10+million
+        // Bright colors for each circle.
+        // public token: same from lab 1
+        mapboxgl.accessToken = 'pk.eyJ1IjoicnV3ZXlkYXRycGUiLCJhIjoiY212N21mcTl5MDRiczJ6cTNrandueGJkZyJ9.2g8qZ9ukpRsIYKFnK2DltQ';
+
+        // creates the map
+        // style: darker basemap so the brightest colors are easiest to see.
+        //projection: globe
+        // center: [longitude, latitude] of the starting view 
+        // zoom: 1 shows the whole globe, can zoom in closer
+        const mymap = new mapboxgl.Map({
+            container: 'map',
+            style: 'mapbox://styles/mapbox/dark-v11',
+            projection: 'globe',
+            center: [-96, 37.8],
+            zoom: 1
+        });
+        
+        // Waits for the map to finish loading, then adds the data and the layer.
+        // The data has to be added after the map loads, or it won't show up.
+        mymap.on('load', () => {
+    
+    // Loads the city data from the local geojson file
+    // I named this source population, the layer uses this source     
+    mymap.addSource('population', {
+        type: 'geojson',
+        data: 'data/world-cities.geojson'
+    });
+
+    // Draws every city and towns as a circle
+    // id: the name of this layer (the click popup)
+    // source: connects the layer to the "population" source above
+    mymap.addLayer({
+        id: 'cities-layer',
+        type: 'circle',
+        source: 'population',
+        paint: {
+            //SIZE: radius grows with population, so bigger cities get bigger circles.
+            // 'interpolate' + 'linear' means sizes change smoothly between the numbers.
+            // each pair is: population, radius in pixels
+            // Most cities in this file are under 1 million, so I added stops at 
+            // 50,000 and 500,000 to keep the small ones from all looking the same.
+            // to get bigger circles, Im taking bigger populations
+            // 10,000,000 is the cutoff; bigger circle
+            'circle-radius': [
+                'interpolate', ['linear'],
+                ['get', 'population'],
+                0, 1,
+                50000, 2,
+                500000, 4,
+                1000000, 6,
+                10000000, 12,
+            ],
+            // color: each color is represents population
+            // Blue: under 50,000 population
+            // green: about 50,000
+            // yellow: about 500,000
+            // orange: about 1 mil
+            // red: about 10mil or more
+            'circle-color': [
+                'interpolate',
+                ['linear'], ['get', 'population'], 
+                0, '#3776AB',
+                50000, '#50C878',
+                500000, '#FFD700',
+                1000000, '#F28500',
+                10000000, '#9B111E',
+            ],
+            // Overlapping cities in crowded areas so that it is visable
+            'circle-opacity': 0.7
+        }
+    });
+    //popup: when a city circle is clicked, shows its name and population
+    // cities layer must match layer ID 
+    mymap.on('click', 'cities-layer', (event) => {
+        const feature = event.features[0];
+        const coordinates = feature.geometry.coordinates.slice(0, 2);
+
+        //Long and latitude to show location of city circle
+        // City name, population = the number feild
+        // Adds commas
+        new mapboxgl.Popup()
+            .setLngLat(coordinates)
+            .setHTML(`<strong>${feature.properties.accentcity}</strong><br>Population: ${feature.properties.population.toLocaleString()}`)
+            .addTo(mymap);
+    });
+        });
+    // Legend: These values, sizes and colors match the map's circle-radius and circle-color lists.
+    // grades: the population shown, radii = the map radius for each one
+    // colors = the map color for each one. they match the lists in the layers above.
+    const legend = document.getElementById('legend');
+    const grades = ['50,000', '500,000', '1,000,000', '10,000,000'];
+    const radii = [2, 4, 6, 12];
+    const colors = ['#50C878', '#FFD700', '#F28500', '#9B111E'];
+    const labels = ['<strong>Population</strong>'];
+
+    // Makes one row per population value: a circle with its label
+    for (let i = 0; i <grades.length; i++) {
+        const value = grades[i];
+        // Map radius is half the width, so the legend diameter is 2 multiply by the radius
+        const diameter = 2 * radii[i];
+
+        labels.push(
+            '<p class="break"><i class="dot" style="background:' + colors[i] +
+                '; width:' + diameter + 'px; height:' + diameter +
+                'px;"></i> <span class="dot-label" style="top:' +
+                diameter / 2 + 'px;">' + value + '</span></p>'
+        );
+    }
+    // puts all the rows into the legend's box
+    legend.innerHTML = labels.join('');
+
+    </script>
+</body>
+</html>
