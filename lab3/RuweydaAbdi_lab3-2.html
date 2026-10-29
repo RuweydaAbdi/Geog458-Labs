@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lab 3: Seattle Terrain and Seattle's Tree Canopy</title>
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@6.15.0/dist/maplibre-gl.css">
+  <style>
+    body { margin: 0; font: 14px/1.5 Arial, sans-serif; color: #182e3a; }
+    #map { position: absolute; inset: 0; }
+    #panel { position: absolute; top: 12px; left: 12px; padding: 16px;
+      width: 260px; max-width: calc(100% - 100px); background: white;
+      max-height: calc(100% - 80px); overflow: auto; border-radius: 6px; }
+    h1 { margin: 0 0 8px; font-size: 19px; }
+    p { margin: 8px 0; }
+    .ramp { height: 14px; background: linear-gradient(to right,
+      #f5f8e3, #d1c7b3 , #ac9582, #886352, #633221); }
+    .ramp_canopy { height: 14px; background: linear-gradient(to right,
+      #e3f8ed, #c3f3da , #8bddb3, #48c283, #17603b); }
+    .values { display: flex; justify-content: space-between; }
+    .maplibregl-popup-content { white-space: pre-line; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <section id="panel">
+    <h1>Seattle Terrain and Seattle's Tree Canopy</h1>
+    <p>Canopy: Seattle Council Districts (2016, 2021) Elevation: USGS 3DEP</p>
+    <p id="status">Step 1: map frame ready; add the basemap next.</p>
+    <div id="surface-control" hidden>
+      <label><input id="show-surface" type="checkbox" checked> Show elevation</label>
+    </div>
+    <div id="station-control" hidden>
+      <label><input id="show-stations" type="checkbox" checked> Show Seattle council districts</label>
+    </div>
+    <div id="legend" hidden>
+      <p><strong>Elevation (meters)</strong></p>
+      <div class="ramp"></div>
+      <div class="values"><span>0</span><span>85</span><span>170</span></div>
+       <p><strong>Percent of Tree Canopy area in districts, 2021 </strong></p>
+      <div class="ramp_canopy"></div>
+      <div class="values"><span>20</span><span>27.5</span><span>35</span></div>
+      <p>Tree Canopy by seattle council districts: Seattle Geodata, Elevation Rastor: USGS 3DEP, The National Map.</p>
+    </div>
+  </section>
+
+  <script type="module">
+    import * as maplibregl from 'https://unpkg.com/maplibre-gl@6.15.0/dist/maplibre-gl.mjs';
+
+    const map = new maplibregl.Map({
+      container: 'map',
+      style: {
+        version: 8,
+        sources: {},
+        layers: [{ id: 'background', type: 'background',
+          paint: { 'background-color': '#edf1f0' } }]
+      },
+      center: [-122.3321, 47.6062],
+      zoom: 11,
+      minZoom: 10,
+      maxZoom: 13,
+      maxBounds: [[-122.63, 47.40], [-122.03, 47.83]]
+    });
+    map.addControl(new maplibregl.NavigationControl());
+    map.addControl(new maplibregl.ScaleControl({ unit: 'metric' }));
+
+    map.on('error', (event) => {
+      document.getElementById('status').textContent =
+        'Load error: check the file path and browser Console.';
+      console.error(event.error);
+    });
+
+    map.on('load', () => {
+    map.addSource('basemap-tiles', {
+        type: 'raster',
+        tiles: ['assets/mapbox-independent/{z}/{x}/{y}.png'],
+        tileSize: 256,
+        scheme: 'xyz',
+        minzoom: 10,
+        maxzoom: 13,
+        bounds: [-122.6244, 47.4029, -122.0313, 47.8211],
+        attribution: '© Mapbox © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    });
+    map.addLayer({
+        id: 'basemap',
+        type: 'raster',
+        source: 'basemap-tiles',
+        paint: { 'raster-opacity': 1, 'raster-fade-duration': 0 }
+    });
+    document.getElementById('status').textContent = 'Pan and zoom around seattle.';
+    map.addSource('pm25-tiles', {
+        type: 'raster',
+        tiles: ['assets/elevation/{z}/{x}/{y}.png'],
+        tileSize: 256,
+        scheme: 'xyz',
+        minzoom: 10,
+        maxzoom: 13,
+        bounds: [-122.6244, 47.4029, -122.0313, 47.8211],
+        attribution: 'Elevation: USGS 3DEP; canopy: Seattle GeoData; Map by Ruweyda Abdi'
+    });
+    map.addLayer({
+        id: 'pm25-surface',
+        type: 'raster',
+        source: 'pm25-tiles',
+        paint: { 'raster-opacity': 0.7, 'raster-fade-duration': 0 }
+    });
+    document.getElementById('surface-control').hidden = false;
+    document.getElementById('legend').hidden = false;
+    document.getElementById('show-surface').addEventListener('change', (event) => {
+        map.setLayoutProperty('pm25-surface', 'visibility',
+            event.target.checked ? 'visible' : 'none');
+
+    });
+    document.getElementById('status').textContent =
+        'toggle the elevation to compare it with the basemap.';
+    map.addSource('station-data', {
+        type: 'geojson',
+        data: 'data/Seattle_Tree_Canopy_2016_2021_Council_Districts.geojson'
+    });
+    map.addLayer({
+        id: 'stations',
+        type: 'fill',
+        source: 'station-data',
+        paint: {
+            'fill-color': ['interpolate', ['linear'], ['to-number', ['get', 'TreeCanopy_2021_Percent']],
+              20,'#e3f8ed',
+              23.75,'#c3f3da',
+              27.50,'#8bddb3',
+              31.25,'#48c283',
+              35, '#17603b'],
+            'fill-opacity': 0.45
+        }
+    });
+    map.on('click', 'stations', (event) => {
+        const feature = event.features[0];
+        const station = feature.properties;
+        new maplibregl.Popup()
+            .setLngLat(event.lngLat)
+            .setText([
+                'Council district ' + station.C_DISTRICT,
+                'Tree canopy 2016: ' + Number(station.TreeCanopy_2016_Percent).toFixed(1) + '%',
+                'Tree canopy 2021: ' + Number(station.TreeCanopy_2021_Percent).toFixed(1) + '%',
+                'Change: ' + Number(station.Change_Percent_AbsDiff).toFixed(2) + ' percentage points'
+            ].join('\n'))
+            .addTo(map);
+        });
+        map.on('mouseenter', 'stations', () => {
+            map.getCanvas().style.cursor = 'pointer';
+        });
+        map.on('mouseleave', 'stations', () => {
+            map.getCanvas().style.cursor = '';
+        });
+        document.getElementById('station-control').hidden = false;
+        document.getElementById('show-stations').addEventListener('change', (event) => {
+            map.setLayoutProperty('stations', 'visibility',
+                event.target.checked ? 'visible' : 'none');
+        });
+        document.getElementById('status').textContent =
+            'Click a Council District to see its tree canopy.';
+    });
+  </script>
+</body>
+</html>
